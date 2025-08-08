@@ -25,7 +25,7 @@ const HabilitationTable = ({
   const columns = [
     { key: 'select', label: '', width: '50px', sortable: false },
     { key: 'userName', label: 'User Name', width: '200px', sortable: true },
-    { key: 'certificationType', label: 'Certification Type', width: '180px', sortable: true },
+    { key: 'certificationType', label: 'Reference', width: '180px', sortable: true },
     { key: 'status', label: 'Status', width: '120px', sortable: true },
     { key: 'issueDate', label: 'Issue Date', width: '130px', sortable: true },
     { key: 'expirationDate', label: 'Expiration Date', width: '130px', sortable: true },
@@ -192,14 +192,7 @@ const HabilitationTable = ({
                     >
                       <Icon name="Edit" size={16} />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(habilitation)}
-                      className="h-8 w-8 text-error hover:text-error"
-                    >
-                      <Icon name="Trash2" size={16} />
-                    </Button>
+                    
                   </div>
                 </td>
               </tr>
@@ -267,16 +260,7 @@ const HabilitationTable = ({
               >
                 Edit
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDelete(habilitation)}
-                iconName="Trash2"
-                iconPosition="left"
-                className="text-error hover:text-error"
-              >
-                Delete
-              </Button>
+              
             </div>
           </div>
         ))}
