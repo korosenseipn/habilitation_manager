@@ -124,11 +124,3 @@ const ActivityFeed = () => {
 };
 
 export default ActivityFeed;
-
-
-
-modification d habilitation en se basant sur un si 
-saisie d utilisateur doit etre par selection non pas par saisie 
-referenciel utilisateur 
-.. si 
-.. srtuctures
