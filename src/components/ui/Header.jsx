@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Icon from "../AppIcon"
 import Button from "./Button"
 import { useNavigate } from "react-router-dom"
@@ -9,11 +9,108 @@ const Header = ({ onSidebarToggle, sidebarOpen }) => {
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
   const navigate = useNavigate()
 
-  // Get user email from localStorage for display
-  const userEmail = localStorage.getItem("userEmail") || "admin@company.com"
-  const userName = userEmail.split("@")[0].charAt(0).toUpperCase() + userEmail.split("@")[0].slice(1)
+  // 🔧 NOUVELLE LOGIQUE: Lire les vraies données utilisateur
+  useEffect(() => {
+    console.log('🔍 === HEADER DEBUG ===');
+    
+    const getUserData = () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        console.log('🔍 Raw localStorage user:', storedUser);
+        
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          console.log('🔍 Parsed user from localStorage:');
+          console.log('  - ID:', parsedUser.id);
+          console.log('  - Email:', parsedUser.email);
+          console.log('  - First Name:', parsedUser.first_name);
+          console.log('  - Last Name:', parsedUser.last_name);
+          console.log('  - Role:', parsedUser.role);
+          console.log('  - Employee ID:', parsedUser.employee_id);
+          
+          setCurrentUser(parsedUser);
+          console.log('🔍 User set in header state:', parsedUser);
+        } else {
+          console.log('🔍 No user data found, checking old format...');
+          // Fallback pour l'ancien format
+          const userEmail = localStorage.getItem("userEmail");
+          if (userEmail) {
+            console.log('🔍 Found old userEmail format:', userEmail);
+            setCurrentUser({
+              email: userEmail,
+              first_name: userEmail.split("@")[0],
+              last_name: '',
+              role: 'unknown'
+            });
+          } else {
+            console.log('🔍 No user data at all');
+            setCurrentUser(null);
+          }
+        }
+      } catch (error) {
+        console.error('🔍 Error parsing user data:', error);
+        setCurrentUser(null);
+      }
+    };
+
+    // Charger les données au démarrage
+    getUserData();
+
+    // Écouter les changements de localStorage
+    const handleStorageChange = (e) => {
+      if (e.key === 'user' || e.key === 'userEmail') {
+        console.log('🔍 Storage changed, reloading user data...');
+        getUserData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Écouter aussi les changements dans la même page
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = function(key, value) {
+      originalSetItem.apply(this, arguments);
+      if (key === 'user' || key === 'userEmail') {
+        setTimeout(getUserData, 0); // Async pour éviter les problèmes de timing
+      }
+    };
+
+    console.log('🔍 === END HEADER DEBUG ===');
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      localStorage.setItem = originalSetItem;
+    };
+  }, []);
+
+  // 🔧 Calculer les données d'affichage basées sur currentUser
+  const displayData = (() => {
+    if (!currentUser) {
+      return {
+        userEmail: "non-connecté",
+        userName: "Utilisateur",
+        fullName: "Non connecté",
+        role: "guest"
+      };
+    }
+
+    const userEmail = currentUser.email || "unknown@domain.com";
+    const firstName = currentUser.first_name || "Utilisateur";
+    const lastName = currentUser.last_name || "";
+    const fullName = `${firstName} ${lastName}`.trim();
+    const userName = firstName;
+    const role = currentUser.role || "employee";
+
+    return {
+      userEmail,
+      userName,
+      fullName,
+      role
+    };
+  })();
 
   const notifications = [
     {
@@ -60,13 +157,17 @@ const Header = ({ onSidebarToggle, sidebarOpen }) => {
   }
 
   const handleLogoutConfirm = () => {
-    // Clear authentication state from localStorage
+    console.log('🔍 Logout confirmed, clearing all data...');
+    
+    // 🔧 NOUVELLE LOGIQUE: Nettoyer toutes les données d'authentification
     localStorage.removeItem("isAuthenticated")
-    localStorage.removeItem("userEmail")
+    localStorage.removeItem("userEmail") // Ancien format
+    localStorage.removeItem("user") // Nouveau format
+    localStorage.removeItem("accessToken")
+    localStorage.removeItem("refreshToken")
 
-    // Clear any other user-related data if needed
-    // localStorage.removeItem('userRole');
-    // localStorage.removeItem('sessionToken');
+    // Réinitialiser l'état local
+    setCurrentUser(null);
 
     // Close confirmation dialog
     setShowLogoutConfirm(false)
@@ -81,6 +182,34 @@ const Header = ({ onSidebarToggle, sidebarOpen }) => {
 
   return (
     <>
+      {/* 🔧 DEBUG BOX - À SUPPRIMER plus tard */}
+      <div style={{
+        backgroundColor: '#f0f8ff',
+        padding: '10px',
+        margin: '10px',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        fontSize: '12px',
+        position: 'fixed',
+        top: '70px',
+        right: '10px',
+        zIndex: 9999,
+        width: '300px'
+      }}>
+        <strong>🔧 HEADER DEBUG:</strong><br/>
+        {currentUser ? (
+          <>
+            <strong>Utilisateur connecté:</strong> {displayData.fullName}<br/>
+            <strong>Email:</strong> {displayData.userEmail}<br/>
+            <strong>Rôle:</strong> {displayData.role}<br/>
+            <strong>ID:</strong> {currentUser.id}<br/>
+            <strong>Employee ID:</strong> {currentUser.employee_id || 'N/A'}
+          </>
+        ) : (
+          <span style={{color: 'red'}}>❌ Aucun utilisateur connecté</span>
+        )}
+      </div>
+
       <header className="fixed top-0 left-0 right-0 bg-card border-b border-border z-header">
         <div className="flex items-center justify-between h-16 px-4">
           {/* Left Section - Logo and Menu Toggle */}
@@ -160,7 +289,7 @@ const Header = ({ onSidebarToggle, sidebarOpen }) => {
                 <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
                   <Icon name="User" size={16} color="white" />
                 </div>
-                <span className="hidden md:block text-sm font-medium">{userName}</span>
+                <span className="hidden md:block text-sm font-medium">{displayData.userName}</span>
                 <Icon name="ChevronDown" size={16} />
               </Button>
 
@@ -169,8 +298,11 @@ const Header = ({ onSidebarToggle, sidebarOpen }) => {
                 <div className="absolute right-0 top-full mt-2 w-48 bg-popover border border-border rounded-lg shadow-dropdown z-dropdown">
                   <div className="p-2">
                     <div className="px-3 py-2 text-sm">
-                      <p className="font-medium text-popover-foreground">{userName}</p>
-                      <p className="text-muted-foreground">{userEmail}</p>
+                      <p className="font-medium text-popover-foreground">{displayData.fullName}</p>
+                      <p className="text-muted-foreground">{displayData.userEmail}</p>
+                      <p className="text-xs text-accent font-medium mt-1">
+                        {displayData.role.charAt(0).toUpperCase() + displayData.role.slice(1)}
+                      </p>
                     </div>
                     <div className="border-t border-border my-2"></div>
                     <Button
